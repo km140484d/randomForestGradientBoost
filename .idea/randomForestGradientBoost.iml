@@ -6,5 +6,8 @@
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
+    <orderEntry type="module" module-name="logistickaRegresija" />
+    <orderEntry type="module" module-name="linearnaRegresija1" />
+    <orderEntry type="module" module-name="linearnaRegresija1" />
   </component>
 </module>

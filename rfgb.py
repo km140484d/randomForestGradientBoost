@@ -84,17 +84,24 @@ def main():
     print('gb', n_estimators[gb_accuracy_train.index(max(gb_accuracy_train))],
           n_estimators[gb_accuracy_test.index(max(gb_accuracy_test))])
 
-    print(max(n_train_max, n_test_max) + 20)
+    print(max(n_train_max, n_test_max))
 
-    n_estimators = [int(x) for x in np.linspace(start=1, stop=max(n_train_max, n_test_max) + 20, num=50)]
+    n_estimators = [int(x) for x in np.linspace(start=1, stop=max(n_train_max, n_test_max) + 50, num=50)]
 
     random_forest_grid = {'max_depth': [int(x) for x in np.linspace(start=1, stop=20, num=4)],
-                          'max_features': [1, 'sqrt', 6]}
+                          'max_features': [1, 'sqrt', 6],
+                          'min_samples_split': [int(x) for x in np.linspace(start=2, stop=10, num=3)],
+                          'min_samples_leaf': [int(x) for x in np.linspace(start=1, stop=10, num=3)],
+                          'bootstrap': [True, False]}
 
     param_alg_eval(random_forest_grid, n_estimators, x_train, y_train, x_test, y_test)
 
     gradient_boost_grid = {'max_depth': [int(x) for x in np.linspace(start=1, stop=20, num=4)],
-                           'learning_rate': [float(x) for x in np.linspace(start=0.01, stop=0.5, num=4)]}
+                           'learning_rate': [float(x) for x in np.linspace(start=0.01, stop=0.5, num=4)],
+                           'max_features': [1, 'sqrt', 6],
+                           'min_samples_split': [int(x) for x in np.linspace(start=2, stop=10, num=3)],
+                           'min_samples_leaf': [int(x) for x in np.linspace(start=1, stop=10, num=3)],
+                           'loss': ['deviance', 'exponential']}
 
     param_alg_eval(gradient_boost_grid, n_estimators, x_train, y_train, x_test, y_test, True)
 

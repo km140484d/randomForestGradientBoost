@@ -1,32 +1,41 @@
 # random forest gradient boost
 
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn import preprocessing
 import pandas as pd
 import numpy as np
-import math
 import matplotlib.pyplot as plt
-import seaborn as sn
-from sklearn.metrics import accuracy_score
-from sklearn.model_selection import RandomizedSearchCV
-
-
-def evaluate(model, test_features, test_labels):
-    predictions = model.predict(test_features)
-    errors = abs(predictions - test_labels)
-    mape = 100 * np.mean(errors / test_labels)
-    accuracy = 100 - mape
-    print('Model Performance')
-    print('Average Error: {:0.4f} degrees.'.format(np.mean(errors)))
-    print('Accuracy = {:0.2f}%.'.format(accuracy))
-    return accuracy
+from sklearn.metrics import accuracy_score, confusion_matrix
 
 
 def param_plot(lab):
     plt.legend(lab, loc='upper right')
     plt.xlabel('n_estimators')
-    plt.ylabel('%')
+    plt.ylabel('accuracy')
     plt.show()
+
+
+def param_alg_eval(param_grid, n_estimators, x_train, y_train, x_test, y_test, flag_grad=False):
+    for param in param_grid:
+        value = param_grid[param]
+        labels = []
+        for val in value:
+            accuracy_train, accuracy_test = [], []
+            for estimator in n_estimators:
+                params = {param: val, 'n_estimators': estimator}
+                if flag_grad:
+                    rfc_model = GradientBoostingClassifier(**params)
+                else:
+                    rfc_model = RandomForestClassifier(**params)
+                rfc_model.fit(x_train, y_train)
+                accuracy_train.append(accuracy_score(y_train, rfc_model.predict(x_train)))
+                accuracy_test.append(accuracy_score(y_test, rfc_model.predict(x_test)))
+            plt.figure('train')
+            plt.plot(n_estimators, accuracy_train)
+            plt.figure('test')
+            plt.plot(n_estimators, accuracy_test)
+            labels.append(param + ' ' + str(round(val, 2)) if isinstance(val, int) or isinstance(val, float) else val)
+        param_plot(labels)
 
 
 def main():
@@ -41,85 +50,53 @@ def main():
     x_train, y_train = x[:boundary_index], y[:boundary_index]
     x_test, y_test = x[boundary_index:], y[boundary_index:]
 
-    # rfc_model = RandomForestClassifier()
-    # hyper_params = rfc_model.get_params()
-    #
-    # print(hyper_params)
+    n_estimators = [int(x) for x in np.linspace(start=1, stop=200, num=50)]
 
-    # random forest
+    rf_accuracy_train, rf_accuracy_test, labels = [], [], []
+    gb_accuracy_train, gb_accuracy_test = [], []
+    for estimator in n_estimators:
+        rf = RandomForestClassifier(n_estimators=estimator)
+        gb = GradientBoostingClassifier(n_estimators=estimator)
+        rf.fit(x_train, y_train)
+        gb.fit(x_train, y_train)
+        rf_accuracy_train.append(accuracy_score(y_train, rf.predict(x_train)))
+        gb_accuracy_train.append(accuracy_score(y_train, gb.predict(x_train)))
+        rf_accuracy_test.append(accuracy_score(y_test, rf.predict(x_test)))
+        gb_accuracy_test.append(accuracy_score(y_test, gb.predict(x_test)))
+    plt.figure('rf train')
+    plt.plot(n_estimators, rf_accuracy_train)
+    plt.figure('rf test')
+    plt.plot(n_estimators, rf_accuracy_test)
+    labels.append('n_estimators' + ' ' + str(round(estimator, 2)))
+    param_plot(labels)
+    plt.figure('gb train')
+    plt.plot(n_estimators, gb_accuracy_train)
+    plt.figure('gb test')
+    plt.plot(n_estimators, gb_accuracy_test)
+    labels.append('n_estimators' + ' ' + str(round(estimator, 2)))
+    param_plot(labels)
 
-    param_grid = {'max_features': ['sqrt', None],
-                  'max_depth': [int(x) for x in np.linspace(start=5, stop=100, num=2)],
-                  'min_samples_split': [int(x) for x in np.linspace(start=2, stop=10, num=2)],
-                  'min_samples_leaf': [int(x) for x in np.linspace(start=1, stop=10, num=2)],
-                  'bootstrap': [True, False]}
+    n_train_max = n_estimators[rf_accuracy_train.index(max(rf_accuracy_train))]
+    n_test_max = n_estimators[rf_accuracy_test.index(max(rf_accuracy_test))]
 
-    n_estimators = [int(x) for x in np.linspace(start=1, stop=150, num=50)]
+    print('rf', n_train_max, n_test_max)
 
-    for param in param_grid:
-        value = param_grid[param]
-        labels = []
-        for val in value:
-            accuracy_train, accuracy_test = [], []
-            for estimator in n_estimators:
-                params = {param: val, 'n_estimators': estimator}
-                rfc_model = RandomForestClassifier(**params)
-                rfc_model.fit(x_train, y_train)
-                accuracy_train.append(accuracy_score(y_train, rfc_model.predict(x_train)))
-                accuracy_test.append(accuracy_score(y_test, rfc_model.predict(x_test)))
-            plt.figure('train')
-            plt.plot(n_estimators, accuracy_train)
-            plt.figure('test')
-            plt.plot(n_estimators, accuracy_test)
-            labels.append(param + ' ' + str(val))
-        param_plot(labels)
+    print('gb', n_estimators[gb_accuracy_train.index(max(gb_accuracy_train))],
+          n_estimators[gb_accuracy_test.index(max(gb_accuracy_test))])
 
+    print(max(n_train_max, n_test_max) + 20)
 
+    n_estimators = [int(x) for x in np.linspace(start=1, stop=max(n_train_max, n_test_max) + 20, num=50)]
 
-    # # 3960 kombinacija
-    # # Number of trees in random forest
-    # n_estimators = [int(x) for x in np.linspace(start=200, stop=2000, num=5)]
-    # # Number of features to consider at every split
-    # max_features = ['log2', 'sqrt', None]
-    # # Maximum number of levels in tree
-    # max_depth = [int(x) for x in np.linspace(start=50, stop=250, num=5)]
-    # max_depth.append(None)
-    # # Minimum number of samples required to split a node
-    # min_samples_split = [int(x) for x in np.linspace(start=2, stop=10, num=5)]
-    # # Minimum number of samples required at each leaf node
-    # min_samples_leaf = [int(x) for x in np.linspace(start=2, stop=10, num=5)]
-    # # Method of selecting samples for training each tree
-    # bootstrap = [True, False]
-    #
-    # random_grid = {'n_estimators': n_estimators,
-    #                'max_features': max_features,
-    #                'max_depth': max_depth,
-    #                'min_samples_split': min_samples_split,
-    #                'min_samples_leaf': min_samples_leaf,
-    #                'bootstrap': bootstrap}
-    #
-    # rfc_random = RandomizedSearchCV(estimator=rfc_model, param_distributions=random_grid, n_iter=100, verbose=2,
-    #                                 n_jobs=-1)
-    # rfc_best_model = rfc_random.fit(x_train, y_train)
-    # y_best_pred = rfc_best_model.predict(x_test)
-    #
-    # rfc_base_model = RandomForestClassifier()
-    # rfc_base_model.fit(x_train, y_train)
-    # y_base_pred = rfc_base_model.predict(x_test)
-    #
-    # print("FINISHED BASE classifying. accuracy score : ", accuracy_score(y_test, y_base_pred))
-    # print("FINISHED OPTIMIZED classifying. accuracy score : ", accuracy_score(y_test, y_best_pred))
+    random_forest_grid = {'max_depth': [int(x) for x in np.linspace(start=1, stop=20, num=4)],
+                          'max_features': [1, 'sqrt', 6]}
 
-    #
-    #
-    # print(rfc_random.best_params_)
+    param_alg_eval(random_forest_grid, n_estimators, x_train, y_train, x_test, y_test)
 
-    # rfc_model.fit(x_train, y_train)
-    #
-    # y_pred = rfc_model.predict(x_test)
-    #
-    # print(rfc_model.get_params())
-    #
+    gradient_boost_grid = {'max_depth': [int(x) for x in np.linspace(start=1, stop=20, num=4)],
+                           'learning_rate': [float(x) for x in np.linspace(start=0.01, stop=0.5, num=4)]}
+
+    param_alg_eval(gradient_boost_grid, n_estimators, x_train, y_train, x_test, y_test, True)
 
 
 if __name__ == "__main__":
